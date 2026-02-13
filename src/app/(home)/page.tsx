@@ -4,7 +4,7 @@ import { PageClient } from "./client";
 import { ErrorBoundary } from "react-error-boundary";
 
 export default async function Home() {
-  void trpc.hello.prefetch({ text: "David" });
+  await trpc.hello.prefetch({ text: "Jacobs" });
 
   return (
     <HydrateClient>

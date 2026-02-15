@@ -1,7 +1,17 @@
-import type { NextConfig } from "next";
+// next.config.js or next.config.mjs
 
+import { NextConfig } from "next";
+
+/** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: true,
+  // Suppress hydration warnings from browser extensions in development
+  ...(process.env.NODE_ENV === "development" && {
+    onDemandEntries: {
+      maxInactiveAge: 25 * 1000,
+      pagesBufferLength: 2,
+    },
+  }),
 };
 
 export default nextConfig;

@@ -22,7 +22,10 @@ export default function RootLayout({
   return (
     <ClerkProvider afterSignOutUrl="/">
       <html lang="en">
-        <body className={`${interGoogle.variable} antialiased`}>
+        <body
+          cz-shortcut-listen="true"
+          className={`${interGoogle.variable} antialiased`}
+        >
           <TRPCProvider>{children}</TRPCProvider>
         </body>
       </html>

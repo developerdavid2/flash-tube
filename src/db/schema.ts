@@ -18,7 +18,7 @@ export const users = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("clerk_id_idx").on(t.clerkId)]
+  (t) => [uniqueIndex("clerk_id_idx").on(t.clerkId)],
 );
 
 export const userRelations = relations(users, ({ many }) => ({
@@ -34,7 +34,7 @@ export const categories = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("name_idx").on(t.name)]
+  (t) => [uniqueIndex("name_idx").on(t.name)],
 );
 export const categoryRelations = relations(categories, ({ many }) => ({
   vidoes: many(videos),
@@ -44,6 +44,11 @@ export const videos = pgTable("videos", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   description: text("description"),
+  muxStatus: text("mux_status"),
+  muxAssetId: text("mux_asset_id").unique(),
+  muxUploadId: text("mux_upload_id").unique(),
+  muxTrackId: text("mux_track_id").unique(),
+  muxTrackStatus: text("mux_track_status"),
   userId: uuid("user_id")
     .references(() => users.id, {
       onDelete: "cascade",

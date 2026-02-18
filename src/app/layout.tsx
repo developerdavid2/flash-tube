@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { TRPCProvider } from "@/trpc/client";
+import { Toaster } from "@/components/ui/sonner";
 
 const interGoogle = Inter({
   variable: "--font-inter",
@@ -26,7 +27,10 @@ export default function RootLayout({
           cz-shortcut-listen="true"
           className={`${interGoogle.variable} antialiased`}
         >
-          <TRPCProvider>{children}</TRPCProvider>
+          <TRPCProvider>
+            {children}
+            <Toaster />
+          </TRPCProvider>
         </body>
       </html>
     </ClerkProvider>

@@ -2,14 +2,16 @@
 import { ResponsiveModal } from "@/components/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
-import { Loader2Icon, PlusIcon } from "lucide-react";
+import { Loader2Icon, LoaderIcon, PlusIcon } from "lucide-react";
 import { StudioUploader } from "./studio-uploader";
+import { toast } from "sonner";
 
 export const StudioUploadModal = () => {
   const utils = trpc.useUtils();
   const create = trpc.videos.create.useMutation({
-    onSuccess: () => {
-      utils.studio.getMany.invalidate();
+    onSuccess: async () => {
+      await utils.studio.getMany.invalidate();
+      toast.success("Video created succesfully");
     },
   });
   return (
@@ -31,7 +33,7 @@ export const StudioUploadModal = () => {
         disabled={create.isPending}
       >
         {create.isPending ? (
-          <Loader2Icon className="animate-spin" />
+          <LoaderIcon className="animate-spin" />
         ) : (
           <PlusIcon />
         )}

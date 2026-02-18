@@ -4,6 +4,14 @@ import { NextConfig } from "next";
 
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "image.mux.com",
+      },
+    ],
+  },
   reactStrictMode: true,
   // Suppress hydration warnings from browser extensions in development
   ...(process.env.NODE_ENV === "development" && {

@@ -129,7 +129,7 @@ export const POST = async (req: NextRequest) => {
         .update(videos)
         .set({
           muxTrackId: trackId,
-          muxStatus: status,
+          muxTrackStatus: status,
         })
         .where(eq(videos.muxAssetId, assetId));
     }

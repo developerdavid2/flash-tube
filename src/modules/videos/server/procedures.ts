@@ -93,6 +93,7 @@ export const videosRouter = createTRPCRouter({
         .select({
           thumbnailKey: videos.thumbnailKey,
           previewKey: videos.previewKey,
+          muxAssetId: videos.muxAssetId,
         })
         .from(videos)
         .where(and(eq(videos.id, input.id), eq(videos.userId, userId)));
@@ -108,6 +109,14 @@ export const videosRouter = createTRPCRouter({
           await utapi.deleteFiles(keysToDelete);
         } catch {
           // Best-effort cleanup; still delete the DB row.
+        }
+      }
+
+      if (existingVideo?.muxAssetId) {
+        try {
+          await mux.video.assets.delete(existingVideo.muxAssetId);
+        } catch (error) {
+          console.error("Failed to delete Mux asset", error);
         }
       }
 

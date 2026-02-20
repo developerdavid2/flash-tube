@@ -13,9 +13,12 @@ import {
   CopyCheckIcon,
   CopyIcon,
   Globe2Icon,
+  ImagePlusIcon,
   LoaderIcon,
   LockIcon,
   MoreVerticalIcon,
+  RotateCcwIcon,
+  SparkleIcon,
   TrashIcon,
 } from "lucide-react";
 import { Suspense, useState } from "react";
@@ -46,6 +49,9 @@ import { VideoDeleteModal } from "@/modules/videos/ui/components/video-delete-mo
 import Link from "next/link";
 import { snakeCaseToTitle } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { THUMBNAIL_FALLBACK } from "@/constants";
+import { ThumbnailUploadModal } from "../components/thumbnail-upload-modal";
 
 type FormSchema = z.infer<typeof videoUpdateSchema>;
 
@@ -73,12 +79,13 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
   const [video] = trpc.studio.getOne.useSuspenseQuery({ id: videoId });
   const [categories] = trpc.categories.getMany.useSuspenseQuery();
   const [isCopied, setIsCopied] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [thumbnailModalOpen, setThumbnailModalOpen] = useState(false);
 
   const update = trpc.videos.update.useMutation({
     onSuccess: async () => {
       await utils.studio.getMany.invalidate();
-      await utils.studio.getOne.invalidate();
+      await utils.studio.getOne.invalidate({ id: videoId });
       toast.success("Video updated succesfully");
     },
     onError: () => {
@@ -97,6 +104,17 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
     },
   });
 
+  const restoreThumbnail = trpc.videos.restoreThumbnail.useMutation({
+    onSuccess: async () => {
+      await utils.studio.getMany.invalidate();
+      await utils.studio.getOne.invalidate({ id: videoId });
+      toast.success("Thumbnail restored");
+    },
+    onError: () => {
+      toast.error("Something went wrong");
+    },
+  });
+
   const form = useForm<FormSchema>({
     resolver: zodResolver(videoUpdateSchema),
     defaultValues: video,
@@ -108,11 +126,13 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
 
   const onDelete = async () => {
     await deleteVideo.mutateAsync({ id: videoId });
-    setIsDeleteOpen(false);
+    setDeleteModalOpen(false);
   };
 
-  const isPending = update.isPending || deleteVideo.isPending;
+  const isPending =
+    update.isPending || deleteVideo.isPending || restoreThumbnail.isPending;
   // TODO: Change if deploying outside of VERCEL
+
   const fullUrl = `${process.env.VERCEL_URL || "http://localhost:3000"}/videos/${videoId}`;
 
   const onCopy = async () => {
@@ -129,11 +149,16 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <VideoDeleteModal
-          open={isDeleteOpen}
-          onOpenChangeAction={() => setIsDeleteOpen(false)}
+          open={deleteModalOpen}
+          onOpenChangeAction={() => setDeleteModalOpen(false)}
           onDeleteAction={onDelete}
           videoTitle={video.title}
           disabled={isPending}
+        />
+        <ThumbnailUploadModal
+          open={thumbnailModalOpen}
+          onOpenChangeAction={() => setThumbnailModalOpen(false)}
+          videoId={videoId}
         />
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -161,7 +186,7 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => setIsDeleteOpen(true)}
+                  onClick={() => setDeleteModalOpen(true)}
                   disabled={isPending}
                 >
                   <TrashIcon className="size-4 mr-2" />
@@ -221,8 +246,58 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
             />
 
             {/* TODO: Add thumbmnail field here */}
-            {/* Category */}
+            {/* Thumbnail */}
+            <FormField
+              name="thumbnailUrl"
+              control={form.control}
+              render={() => (
+                <FormItem>
+                  <FormLabel>Thumbnail</FormLabel>
+                  <FormControl>
+                    <div className="p-0.5 border border-dashed border-neutral-400 relative h-[84px] w-[153px] group">
+                      <Image
+                        src={video.thumbnailUrl || THUMBNAIL_FALLBACK}
+                        fill
+                        alt="Thimnail"
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="bg-black/50 hover:bg-black/50 absolute top-1 right-1 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 duration-300 size-7"
+                          >
+                            <MoreVerticalIcon className="text-white" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" side="right">
+                          <DropdownMenuItem
+                            onClick={() => setThumbnailModalOpen(true)}
+                          >
+                            <ImagePlusIcon className="size-4 mr-1" />
+                            Change
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <SparkleIcon className="size-4 mr-1" />
+                            AI-generated
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              restoreThumbnail.mutate({ id: videoId })
+                            }
+                          >
+                            <RotateCcwIcon className="size-4 mr-1" />
+                            Restore
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
+            {/* Category */}
             <FormField
               control={form.control}
               name="categoryId"

@@ -11,6 +11,7 @@ import {
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { UTApi } from "uploadthing/server";
 const SIGNING_SECRET = process.env.MUX_WEBHOOK_SECRET!;
 
 type WebhookEvent =
@@ -22,7 +23,7 @@ type WebhookEvent =
 
 export const POST = async (req: NextRequest) => {
   if (!SIGNING_SECRET) {
-    throw new Error("MUX_WEBHOOK_SECRE is not set");
+    throw new Error("MUX_WEBHOOK_SECRET is not set");
   }
 
   const headersPayload = await headers();
@@ -72,10 +73,33 @@ export const POST = async (req: NextRequest) => {
         return new NextResponse("No playback ID found", { status: 400 });
       }
 
-      const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.webp?width=1000&height=562&fit_mode=crop`;
-      const previewUrl = `https://image.mux.com/${playbackId}/animated.gif`;
-
+      const tempThumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.webp?width=1000&height=562&fit_mode=crop`;
+      const tempPreviewUrl = `https://image.mux.com/${playbackId}/animated.gif`;
       const duration = data.duration ? Math.round(data.duration * 1000) : 0;
+
+      const utapi = new UTApi();
+
+      // If Mux retries this webhook (or a user already changed the thumbnail),
+      // delete the previously stored UploadThing files first so we only keep one
+      // thumbnail + one preview per video.
+      const [existing] = await db
+        .select({
+          thumbnailKey: videos.thumbnailKey,
+          previewKey: videos.previewKey,
+        })
+        .from(videos)
+        .where(eq(videos.muxUploadId, data.upload_id));
+
+      const [uploadedThumbnail, uploadedPreview] =
+        await utapi.uploadFilesFromUrl([tempThumbnailUrl, tempPreviewUrl]);
+      if (!uploadedThumbnail.data || !uploadedPreview.data) {
+        return new Response("Failed to upload thumbnail or preview", {
+          status: 500,
+        });
+      }
+
+      const { key: thumbnailKey, url: thumbnailUrl } = uploadedThumbnail.data;
+      const { key: previewKey, url: previewUrl } = uploadedPreview.data;
 
       await db
         .update(videos)
@@ -84,10 +108,26 @@ export const POST = async (req: NextRequest) => {
           muxPlaybackId: playbackId,
           muxAssetId: data.id,
           thumbnailUrl,
+          thumbnailKey,
           previewUrl,
+          previewKey,
           duration,
         })
         .where(eq(videos.muxUploadId, data.upload_id));
+
+      const keysToDelete = [
+        existing?.thumbnailKey,
+        existing?.previewKey,
+      ].filter((k): k is string =>
+        Boolean(k && k !== thumbnailKey && k !== previewKey),
+      );
+      if (keysToDelete.length > 0) {
+        try {
+          await utapi.deleteFiles(keysToDelete);
+        } catch {
+          // Best-effort cleanup; DB already points at the latest keys.
+        }
+      }
       break;
     }
     case "video.asset.errored": {
@@ -109,6 +149,27 @@ export const POST = async (req: NextRequest) => {
       if (!data.upload_id) {
         return new NextResponse("No upload ID found", { status: 400 });
       }
+      const [existing] = await db
+        .select({
+          thumbnailKey: videos.thumbnailKey,
+          previewKey: videos.previewKey,
+        })
+        .from(videos)
+        .where(eq(videos.muxUploadId, data.upload_id));
+
+      const keysToDelete = [
+        existing?.thumbnailKey,
+        existing?.previewKey,
+      ].filter((k): k is string => Boolean(k));
+      if (keysToDelete.length > 0) {
+        try {
+          const utapi = new UTApi();
+          await utapi.deleteFiles(keysToDelete);
+        } catch {
+          // Ignore cleanup errors; we still want to delete the DB record.
+        }
+      }
+
       await db.delete(videos).where(eq(videos.muxUploadId, data.upload_id));
       break;
     }

@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { TRPCProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const interGoogle = Inter({
   variable: "--font-inter",
@@ -27,10 +28,17 @@ export default function RootLayout({
           cz-shortcut-listen="true"
           className={`${interGoogle.variable} antialiased`}
         >
-          <TRPCProvider>
-            {children}
-            <Toaster />
-          </TRPCProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TRPCProvider>
+              {children}
+              <Toaster />
+            </TRPCProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

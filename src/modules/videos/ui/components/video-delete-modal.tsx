@@ -29,7 +29,7 @@ export const VideoDeleteModal = ({
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             Do you want to delete{" "}
-            <span className="font-medium text-foreground">
+            <span className="text-foreground font-bold">
               {videoTitle ? `"${videoTitle}"` : "this video"}
             </span>
             ? This action is irreversible.

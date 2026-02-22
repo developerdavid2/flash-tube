@@ -25,7 +25,7 @@ export const VideoPlayer = ({
       playerInitTime={0}
       autoPlay={autoPlay}
       thumbnailTime={0}
-      className="w-full h-full object-contain"
+      className="w-full h-full object-cover"
       accentColor="#FF2056"
       onPlay={onPlay}
     />

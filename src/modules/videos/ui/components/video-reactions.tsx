@@ -1,11 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useOptimisticReaction } from "@/hooks/use-optimistic-reaction";
 import { cn } from "@/lib/utils";
 import { ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
 import { VideoGetOneOutput } from "../../types";
-import { useClerk } from "@clerk/nextjs";
-import { trpc } from "@/trpc/client";
-import { toast } from "sonner";
 
 interface VideoReactionsProps {
   videoId: string;
@@ -20,33 +18,7 @@ export const VideoReactions = ({
   dislikes,
   viewerReaction,
 }: VideoReactionsProps) => {
-  const clerk = useClerk();
-  const utils = trpc.useUtils();
-
-  const like = trpc.videoReactions.like.useMutation({
-    onSuccess: () => {
-      utils.videos.getOne.invalidate({ id: videoId });
-      // TODO: Invalid "liked" playlist
-    },
-    onError: (error) => {
-      toast.error("Something went wrong");
-      if (error.data?.code === "UNAUTHORIZED") {
-        clerk.openSignIn();
-      }
-    },
-  });
-  const dislike = trpc.videoReactions.dislike.useMutation({
-    onSuccess: () => {
-      utils.videos.getOne.invalidate({ id: videoId });
-      // TODO: Invalid "liked" playlist
-    },
-    onError: (error) => {
-      toast.error("Something went wrong");
-      if (error.data?.code === "UNAUTHORIZED") {
-        clerk.openSignIn();
-      }
-    },
-  });
+  const { like, dislike } = useOptimisticReaction(videoId);
   return (
     <div className="flex items-center flex-none">
       <Button

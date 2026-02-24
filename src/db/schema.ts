@@ -41,9 +41,10 @@ export const userRelations = relations(users, ({ many }) => ({
   suscribers: many(subscriptions, {
     relationName: "subscriptions_creator_id_fkey",
   }),
+  comments: many(comments),
 }));
 
-// SUBSCRIPTIONS SCHEMA
+/////////////////////// SUBSCRIPTIONS SCHEMA
 export const subscriptions = pgTable(
   "subscriptions",
   {
@@ -65,19 +66,48 @@ export const subscriptions = pgTable(
 );
 
 export const subscriptionRelations = relations(subscriptions, ({ one }) => ({
-  viewerId: one(users, {
+  viewer: one(users, {
     fields: [subscriptions.viewerId],
     references: [users.id],
     relationName: "subscriptions_viewer_id_fkey",
   }),
-  creatorId: one(users, {
+  creator: one(users, {
     fields: [subscriptions.creatorId],
     references: [users.id],
     relationName: "subscriptions_creator_id_fkey",
   }),
 }));
 
-// CATEGORIES SCHEMA
+/////////////////////// COMMENTS SCHEMA
+export const comments = pgTable("comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  videoId: uuid("video_id")
+    .references(() => videos.id, { onDelete: "cascade" }) // ✅ Fixed
+    .notNull(),
+  value: text("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const commentRelations = relations(comments, ({ one }) => ({
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  video: one(videos, {
+    fields: [comments.videoId],
+    references: [videos.id],
+  }),
+}));
+
+export const commentSelectSchema = createSelectSchema(comments);
+export const commentInsertSchema = createInsertSchema(comments);
+export const commentUpdateSchema = createUpdateSchema(comments);
+
+////////////////// CATEGORIES SCHEMA
 export const categories = pgTable(
   "categories",
   {
@@ -93,7 +123,7 @@ export const categoryRelations = relations(categories, ({ many }) => ({
   videos: many(videos),
 }));
 
-// VIDEOS SCHEMA
+/////////////////////// VIDEOS SCHEMA
 export const videoVisibility = pgEnum("video_visibility", [
   "public",
   "private",
@@ -146,9 +176,10 @@ export const videoRelations = relations(videos, ({ one, many }) => ({
   }),
   views: many(videoViews),
   reactions: many(videoReactions),
+  comments: many(comments),
 }));
 
-//  VIDEO VIEWS SCHEMA
+/////////////////////  VIDEO VIEWS SCHEMA
 export const videoViews = pgTable(
   "video_views",
   {
@@ -170,11 +201,11 @@ export const videoViews = pgTable(
 );
 
 export const videoViewRelations = relations(videoViews, ({ one }) => ({
-  users: one(users, {
+  user: one(users, {
     fields: [videoViews.userId],
     references: [users.id],
   }),
-  videos: one(videos, {
+  video: one(videos, {
     fields: [videoViews.videoId],
     references: [videos.id],
   }),
@@ -184,7 +215,7 @@ export const videoViewSelectSchema = createSelectSchema(videoViews);
 export const videoViewInsertSchema = createInsertSchema(videoViews);
 export const videoViewUpdateSchema = createUpdateSchema(videoViews);
 
-// REACTION SCHEMA
+/////////////////////// VIDEO REACTION SCHEMA
 export const reactionType = pgEnum("reaction_type", ["like", "dislike"]);
 
 export const videoReactions = pgTable(
@@ -209,11 +240,11 @@ export const videoReactions = pgTable(
 );
 
 export const videoReactionRelations = relations(videoReactions, ({ one }) => ({
-  users: one(users, {
+  user: one(users, {
     fields: [videoReactions.userId],
     references: [users.id],
   }),
-  videos: one(videos, {
+  video: one(videos, {
     fields: [videoReactions.videoId],
     references: [videos.id],
   }),

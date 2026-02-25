@@ -215,7 +215,9 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
     generateTitle.isPending ||
     generateDescription.isPending;
 
-  const fullUrl = `${process.env.VERCEL_URL || "http://localhost:3000"}/videos/${videoId}`;
+  const fullUrl = `${
+    process.env.VERCEL_URL || "http://localhost:3000"
+  }/videos/${videoId}`;
 
   const onCopy = async () => {
     await navigator.clipboard.writeText(fullUrl);
@@ -273,7 +275,7 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
                   <MoreVerticalIcon />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent className="w-40" align="start">
                 <DropdownMenuItem
                   onClick={() => setDeleteModalOpen(true)}
                   disabled={isPending}

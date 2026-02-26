@@ -26,7 +26,7 @@ export const VideoOwner = ({ user, videoId }: VideoOwnerProps) => {
         <div className="flex items-center gap-3 min-w-0">
           <UserAvatar size="lg" imageUrl={user.imageUrl} name={user.name} />
           <div className="flex flex-col gap-1 min-w-0">
-            <UserInfo size="lg" name={user.name} />
+            <UserInfo size="lg" name={user.name} className="!font-semibold" />
             <span className="text-sm text-muted-foreground line-clamp-1">
               {user.subscriberCount} subscribers
             </span>

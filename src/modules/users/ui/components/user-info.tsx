@@ -26,7 +26,9 @@ export const UserInfo = ({ name, className, size }: UserInfoProps) => {
     <div className={cn(userInfoVariants({ size, className }))}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <p className="line-clamp-1 !font-semibold !text-foreground">{name}</p>
+          <p className={cn("line-clamp-1 !text-foreground", className)}>
+            {name}
+          </p>
         </TooltipTrigger>
         <TooltipContent align="center">
           <p>{name}</p>

@@ -18,7 +18,12 @@ import z from "zod";
 
 interface CommentFormProps {
   videoId: string;
+  parentId?: string;
+  onCancel?: () => void;
   onSuccess?: () => void;
+  variant?: "comment" | "reply" | "edit";
+  editCommentId?: string;
+  editInitialValue?: string;
 }
 
 const commentFormSchema = commentInsertSchema
@@ -27,6 +32,10 @@ const commentFormSchema = commentInsertSchema
     id: true,
     createdAt: true,
     updatedAt: true,
+    isDeleted: true,
+    deletedAt: true,
+    isEdited: true,
+    editedAt: true,
   })
   .extend({
     value: z
@@ -37,7 +46,15 @@ const commentFormSchema = commentInsertSchema
 
 type FormSchema = z.infer<typeof commentFormSchema>;
 
-export const CommentForm = ({ videoId, onSuccess }: CommentFormProps) => {
+export const CommentForm = ({
+  videoId,
+  onSuccess,
+  parentId,
+  onCancel,
+  variant = "comment",
+  editCommentId,
+  editInitialValue,
+}: CommentFormProps) => {
   const { user } = useUser();
   const clerk = useClerk();
   const utils = trpc.useUtils();
@@ -45,8 +62,9 @@ export const CommentForm = ({ videoId, onSuccess }: CommentFormProps) => {
   const form = useForm<FormSchema>({
     resolver: zodResolver(commentFormSchema),
     defaultValues: {
+      parentId,
       videoId,
-      value: "",
+      value: editInitialValue || "",
     },
   });
 
@@ -55,6 +73,7 @@ export const CommentForm = ({ videoId, onSuccess }: CommentFormProps) => {
       toast.success("Comment posted!");
       form.reset();
       utils.comments.getMany.invalidate({ videoId });
+      utils.comments.getMany.invalidate({ videoId, parentId });
       onSuccess?.();
     },
     onError: (error) => {
@@ -65,9 +84,41 @@ export const CommentForm = ({ videoId, onSuccess }: CommentFormProps) => {
     },
   });
 
+  const updateComment = trpc.comments.update.useMutation({
+    onSuccess: () => {
+      toast.success("Comment updated!");
+      form.reset();
+      utils.comments.getMany.invalidate({ videoId });
+      utils.comments.getMany.invalidate({ videoId, parentId });
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update comment");
+      if (error.data?.code === "UNAUTHORIZED") {
+        clerk.openSignIn();
+      }
+    },
+  });
+
   const onSubmit = (data: FormSchema) => {
-    createComment.mutate(data);
+    if (variant === "edit" && editCommentId) {
+      // Update existing comment
+      updateComment.mutate({
+        id: editCommentId,
+        value: data.value,
+      });
+    } else {
+      // Create new comment
+      createComment.mutate(data);
+    }
   };
+
+  const handleCancel = () => {
+    form.reset();
+    onCancel?.();
+  };
+
+  const isPending = createComment.isPending || updateComment.isPending;
 
   return (
     <Form {...form}>
@@ -86,9 +137,15 @@ export const CommentForm = ({ videoId, onSuccess }: CommentFormProps) => {
                 <FormControl>
                   <Textarea
                     {...field}
-                    placeholder="Add a comment..."
+                    placeholder={
+                      variant === "reply"
+                        ? "Reply to this comment..."
+                        : variant === "edit"
+                          ? "Edit your comment..."
+                          : "Add a comment..."
+                    }
                     className="resize-none bg-transparent overflow-hidden min-h-0"
-                    disabled={createComment.isPending}
+                    disabled={isPending}
                   />
                 </FormControl>
                 <FormMessage />
@@ -96,12 +153,26 @@ export const CommentForm = ({ videoId, onSuccess }: CommentFormProps) => {
             )}
           />
           <div className="justify-end gap-2 mt-2 flex">
+            {onCancel && (
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={handleCancel}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+            )}
             <Button
               type="submit"
               size="sm"
-              disabled={createComment.isPending || !form.formState.isDirty}
+              disabled={isPending || !form.formState.isDirty}
             >
-              {createComment.isPending ? "Posting..." : "Comment"}
+              {variant === "edit"
+                ? "Save"
+                : variant === "reply"
+                  ? "Reply"
+                  : "Comment"}
             </Button>
           </div>
         </div>

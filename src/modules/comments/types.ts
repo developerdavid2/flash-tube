@@ -1,5 +1,7 @@
 import { AppRouter } from "@/trpc/routers/_app";
 import { inferRouterOutputs } from "@trpc/server";
 
-export type CommentGetManyOutput =
-  inferRouterOutputs<AppRouter>["comments"]["getMany"]["items"];
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+export type CommentGetManyOutput = RouterOutputs["comments"]["getMany"];
+export type Comment = CommentGetManyOutput["items"][number];

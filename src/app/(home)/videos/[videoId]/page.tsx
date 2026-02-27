@@ -3,8 +3,6 @@
 import { DEFAULT_LIMIT } from "@/constants";
 import { VideoView } from "@/modules/videos/ui/views/video-view";
 import { HydrateClient, trpc } from "@/trpc/server";
-import { notFound } from "next/navigation";
-import { z } from "zod";
 
 interface PageProps {
   params: Promise<{
@@ -12,17 +10,10 @@ interface PageProps {
   }>;
 }
 
+export const dynamic = "force-dynamic";
+
 const Page = async ({ params }: PageProps) => {
   const { videoId } = await params;
-
-  // ✅ Validate UUID before doing anything
-  const uuidSchema = z.string().uuid();
-  const validation = uuidSchema.safeParse(videoId);
-
-  if (!validation.success) {
-    // Not a valid UUID (like "logo.png") → return 404
-    notFound();
-  }
 
   // Now safe to prefetch
   void trpc.videos.getOne.prefetch({ id: videoId });

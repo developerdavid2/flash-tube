@@ -51,7 +51,7 @@ import Link from "next/link";
 import { snakeCaseToTitle } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { THUMBNAIL_FALLBACK } from "@/constants";
+import { APP_URL, THUMBNAIL_FALLBACK } from "@/constants";
 import { ThumbnailUploadModal } from "../components/thumbnail-upload-modal";
 import { ThumbnailGenerateModal } from "../components/thumbnail-generate-modal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -161,6 +161,17 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
     },
   });
 
+  const revalidate = trpc.videos.revalidate.useMutation({
+    onSuccess: async () => {
+      utils.studio.getMany.invalidate();
+      utils.studio.getOne.invalidate({ id: videoId });
+      toast.success("Video refreshed succesfully");
+    },
+    onError: () => {
+      toast.error("Something went wrong");
+    },
+  });
+
   const generateTitle = trpc.videos.generateTitle.useMutation({
     onSuccess: async () => {
       toast.success("Background job started", {
@@ -213,11 +224,10 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
     deleteVideo.isPending ||
     restoreThumbnail.isPending ||
     generateTitle.isPending ||
-    generateDescription.isPending;
+    generateDescription.isPending ||
+    revalidate.isPending;
 
-  const fullUrl = `${
-    process.env.VERCEL_URL || "http://localhost:3000"
-  }/videos/${videoId}`;
+  const fullUrl = `${APP_URL || "http://localhost:3000"}/videos/${videoId}`;
 
   const onCopy = async () => {
     await navigator.clipboard.writeText(fullUrl);
@@ -276,6 +286,13 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-40" align="start">
+                <DropdownMenuItem
+                  onClick={() => revalidate.mutate({ id: videoId })}
+                  disabled={isPending}
+                >
+                  <RotateCcwIcon className="size-4 mr-2" />
+                  Refresh
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setDeleteModalOpen(true)}
                   disabled={isPending}

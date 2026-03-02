@@ -72,7 +72,7 @@ export const videosRouter = createTRPCRouter({
               subscriptions,
               eq(subscriptions.creatorId, users.id),
             ),
-            viewerSubscibed: isNotNull(viewerSubscriptions.viewerId).mapWith(
+            viewerSubscribed: isNotNull(viewerSubscriptions.viewerId).mapWith(
               Boolean,
             ),
           },
@@ -152,6 +152,93 @@ export const videosRouter = createTRPCRouter({
           and(
             eq(videos.visibility, "public"),
             categoryId ? eq(videos.categoryId, categoryId) : undefined,
+            cursor
+              ? or(
+                  lt(videos.updatedAt, cursor.updatedAt),
+                  and(
+                    eq(videos.updatedAt, cursor.updatedAt),
+                    lt(videos.id, cursor.id),
+                  ),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(desc(videos.updatedAt), desc(videos.id))
+        .limit(limit + 1);
+
+      const hasMore = data.length > limit;
+      // Remove the last item if ther eis more data
+      const items = hasMore ? data.slice(0, -1) : data;
+      //Set the next cursor to the last irme if there is more data
+      const lastItem = items[items.length - 1];
+
+      const nextCursor = hasMore
+        ? {
+            id: lastItem.id,
+            updatedAt: lastItem.updatedAt,
+          }
+        : null;
+
+      return {
+        items,
+        nextCursor,
+      };
+    }),
+  getManySubscribed: protectedProcedure
+    .input(
+      z.object({
+        cursor: z
+          .object({
+            id: z.uuid(),
+            updatedAt: z.date(),
+          })
+          .nullish(),
+        limit: z.number().min(1).max(100),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const { cursor, limit } = input;
+      const { id: userId } = ctx.user;
+
+      const viewerSubscriptions = db.$with("viewer_subscriptions").as(
+        db
+          .select({
+            userId: subscriptions.creatorId,
+          })
+          .from(subscriptions)
+          .where(eq(subscriptions.viewerId, userId)),
+      );
+
+      const data = await db
+        .with(viewerSubscriptions)
+        .select({
+          ...getTableColumns(videos),
+          user: users,
+          viewCount: db.$count(videoViews, eq(videoViews.videoId, videos.id)),
+          likeCount: db.$count(
+            videoReactions,
+            and(
+              eq(videoReactions.videoId, videos.id),
+              eq(videoReactions.type, "like"),
+            ),
+          ),
+          dislikeCount: db.$count(
+            videoReactions,
+            and(
+              eq(videoReactions.videoId, videos.id),
+              eq(videoReactions.type, "dislike"),
+            ),
+          ),
+        })
+        .from(videos)
+        .innerJoin(users, eq(videos.userId, users.id))
+        .innerJoin(
+          viewerSubscriptions,
+          eq(viewerSubscriptions.userId, users.id),
+        )
+        .where(
+          and(
+            eq(videos.visibility, "public"),
             cursor
               ? or(
                   lt(videos.updatedAt, cursor.updatedAt),

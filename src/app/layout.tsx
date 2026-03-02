@@ -5,6 +5,7 @@ import "./globals.css";
 import { TRPCProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ProgressBar } from "@/components/progress-bar";
 
 const interGoogle = Inter({
   variable: "--font-inter",
@@ -23,11 +24,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider afterSignOutUrl="/">
-      <html lang="en">
-        <body
-          cz-shortcut-listen="true"
-          className={`${interGoogle.variable} antialiased`}
-        >
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${interGoogle.variable} antialiased`}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -35,6 +33,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <TRPCProvider>
+              <ProgressBar />
               {children}
               <Toaster />
             </TRPCProvider>

@@ -57,6 +57,7 @@ export function useOptimisticReaction(videoId: string) {
 
     onSettled() {
       utils.videos.getOne.invalidate({ id: videoId });
+      utils.playlists.getLiked.invalidate();
     },
   });
 
@@ -109,6 +110,7 @@ export function useOptimisticReaction(videoId: string) {
 
     onSettled() {
       utils.videos.getOne.invalidate({ id: videoId });
+      utils.playlists.getLiked.invalidate();
     },
   });
 

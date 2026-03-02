@@ -72,7 +72,7 @@ export const playlistRelations = relations(playlists, ({ one, many }) => ({
 export const playlistVideos = pgTable(
   "playlist_videos",
   {
-    playlistId: uuid("playlist_uuid")
+    playlistId: uuid("playlist_id")
       .references(() => playlists.id, { onDelete: "cascade" })
       .notNull(),
     videoId: uuid("video_id")

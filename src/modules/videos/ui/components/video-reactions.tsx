@@ -18,31 +18,47 @@ export const VideoReactions = ({
   dislikes,
   viewerReaction,
 }: VideoReactionsProps) => {
-  const { like, dislike } = useOptimisticReaction(videoId);
+  const {
+    likeCount,
+    dislikeCount,
+    viewerReaction: optimisticReaction,
+    handleLike,
+    handleDislike,
+  } = useOptimisticReaction(videoId, {
+    id: videoId,
+    likeCount: likes,
+    dislikeCount: dislikes,
+    viewerReaction,
+  } as VideoGetOneOutput);
+
   return (
     <div className="flex items-center flex-none">
       <Button
         className="rounded-l-full rounded-r-none gap-2 pr-4"
         variant="secondary"
-        disabled={like.isPending || dislike.isPending}
-        onClick={() => like.mutate({ videoId })}
+        onClick={handleLike}
       >
         <ThumbsUpIcon
-          className={cn("size-5", viewerReaction === "like" && "fill-black")}
+          className={cn(
+            "size-5",
+            optimisticReaction === "like" && "fill-black dark:fill-white",
+          )}
         />
-        {likes}
+        {likeCount}
       </Button>
       <Separator orientation="vertical" className="h-7" />
       <Button
-        disabled={like.isPending || dislike.isPending}
-        onClick={() => dislike.mutate({ videoId })}
+        onClick={handleDislike}
         className="rounded-l-none rounded-r-full gap-2 pr-4"
         variant="secondary"
       >
         <ThumbsDownIcon
-          className={cn("size-5", viewerReaction === "dislike" && "fill-black")}
+          className={cn(
+            "size-5",
+            optimisticReaction === "dislike" && "fill-black dark:fill-white",
+          )}
         />
-        {dislikes}
+        {dislikeCount}
       </Button>
     </div>
   );

@@ -1,69 +1,76 @@
+"use client";
+
+import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
 
-interface UseSubscriptionProps {
+interface UseOptimisticSubscriptionProps {
   userId: string;
-  isSubscribed: boolean;
+  initialIsSubscribed: boolean;
+  initialSubscriberCount: number;
   fromVideoId?: string;
 }
 
-export const useSubscription = ({
+export function useOptimisticSubscription({
   userId,
-  isSubscribed,
+  initialIsSubscribed,
+  initialSubscriberCount,
   fromVideoId,
-}: UseSubscriptionProps) => {
+}: UseOptimisticSubscriptionProps) {
   const clerk = useClerk();
   const utils = trpc.useUtils();
 
+  const [isSubscribed, setIsSubscribed] = useState(initialIsSubscribed);
+  const [subscriberCount, setSubscriberCount] = useState(
+    initialSubscriberCount,
+  );
+
   const subscribe = trpc.subscriptions.create.useMutation({
-    onSuccess: () => {
-      toast.success("Subscribed");
-      //TODO: reinvalidate subscriptions, getMany, users.getOne
-      utils.videos.getManySubscribed.invalidate();
-      utils.users.getOne.invalidate({ id: userId });
-
-      if (fromVideoId) {
-        utils.videos.getOne.invalidate({ id: fromVideoId });
-      }
-    },
     onError: (error) => {
+      // Roll back on failure
+      setIsSubscribed(false);
+      setSubscriberCount((c) => Math.max(0, c - 1));
       toast.error("Something went wrong");
-
-      if (error.data?.code === "UNAUTHORIZED") {
-        clerk.openSignIn();
-      }
+      if (error.data?.code === "UNAUTHORIZED") clerk.openSignIn();
+    },
+    onSuccess: () => {
+      utils.users.getOne.invalidate({ id: userId });
+      utils.videos.getManySubscribed.invalidate();
+      if (fromVideoId) utils.videos.getOne.invalidate({ id: fromVideoId });
     },
   });
+
   const unsubscribe = trpc.subscriptions.remove.useMutation({
-    onSuccess: () => {
-      toast.success("Unsubscribed");
-      utils.videos.getManySubscribed.invalidate();
-      utils.users.getOne.invalidate({ id: userId });
-      //TODO: reinvalidate subscriptions, getMany, users.getOne
-
-      if (fromVideoId) {
-        utils.videos.getOne.invalidate({ id: fromVideoId });
-      }
-    },
     onError: (error) => {
+      // Roll back on failure
+      setIsSubscribed(true);
+      setSubscriberCount((c) => c + 1);
       toast.error("Something went wrong");
-
-      if (error.data?.code === "UNAUTHORIZED") {
-        clerk.openSignIn();
-      }
+      if (error.data?.code === "UNAUTHORIZED") clerk.openSignIn();
+    },
+    onSuccess: () => {
+      utils.users.getOne.invalidate({ id: userId });
+      utils.videos.getManySubscribed.invalidate();
+      if (fromVideoId) utils.videos.getOne.invalidate({ id: fromVideoId });
     },
   });
 
-  const isPending = subscribe.isPending || unsubscribe.isPending;
-
-  const onClick = () => {
+  const handleToggle = () => {
     if (isSubscribed) {
+      setIsSubscribed(false);
+      setSubscriberCount((c) => Math.max(0, c - 1));
       unsubscribe.mutate({ userId });
     } else {
+      setIsSubscribed(true);
+      setSubscriberCount((c) => c + 1);
       subscribe.mutate({ userId });
     }
   };
 
-  return { isPending, onClick };
-};
+  return {
+    isSubscribed,
+    subscriberCount,
+    handleToggle,
+  };
+}

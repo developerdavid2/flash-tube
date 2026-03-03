@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { SubscriptionButton } from "@/modules/subscriptions/ui/components/subscription-button";
 import { UserInfo } from "@/modules/users/ui/components/user-info";
-import { useSubscription } from "@/modules/subscriptions/hooks/use-subscriptions";
+import { useOptimisticSubscription } from "@/modules/subscriptions/hooks/use-subscriptions";
 
 interface VideoOwnerProps {
   user: VideoGetOneOutput["user"];
@@ -14,11 +14,13 @@ interface VideoOwnerProps {
 
 export const VideoOwner = ({ user, videoId }: VideoOwnerProps) => {
   const { userId: clerkUserId, isLoaded } = useAuth();
-  const { isPending, onClick } = useSubscription({
-    userId: user.id,
-    isSubscribed: user.viewerSubscribed,
-    fromVideoId: videoId,
-  });
+  const { isSubscribed, subscriberCount, handleToggle } =
+    useOptimisticSubscription({
+      userId: user.id,
+      initialIsSubscribed: user.viewerSubscribed,
+      initialSubscriberCount: user.subscriberCount,
+      fromVideoId: videoId,
+    });
 
   return (
     <div className="flex items-center sm:items-start justify-between sm:justify-start gap-3 min-w-0">
@@ -28,7 +30,7 @@ export const VideoOwner = ({ user, videoId }: VideoOwnerProps) => {
           <div className="flex flex-col gap-1 min-w-0">
             <UserInfo size="lg" name={user.name} className="!font-semibold" />
             <span className="text-sm text-muted-foreground line-clamp-1">
-              {user.subscriberCount} subscribers
+              {subscriberCount} subscribers
             </span>
           </div>
         </div>
@@ -39,9 +41,9 @@ export const VideoOwner = ({ user, videoId }: VideoOwnerProps) => {
         </Button>
       ) : (
         <SubscriptionButton
-          onClick={onClick}
-          disabled={isPending || !isLoaded}
-          isSubscribed={user.viewerSubscribed}
+          onClick={handleToggle}
+          disabled={!isLoaded}
+          isSubscribed={isSubscribed}
           className="flex-none"
         />
       )}

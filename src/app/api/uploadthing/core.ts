@@ -9,6 +9,66 @@ import z from "zod";
 const f = createUploadthing();
 
 export const ourFileRouter = {
+  bannerUploader: f({
+    image: {
+      maxFileSize: "4MB",
+      maxFileCount: 1,
+    },
+  })
+    .middleware(async () => {
+      const { userId: clerkUserId } = await auth();
+
+      if (!clerkUserId) throw new UploadThingError("Unauthorized");
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.clerkId, clerkUserId));
+
+      if (!existingUser) throw new UploadThingError("Unauthorized");
+
+      if (existingUser.bannerKey) {
+        const utapi = new UTApi();
+
+        await utapi.deleteFiles(existingUser.bannerKey);
+        await db
+          .update(users)
+          .set({
+            bannerKey: null,
+            bannerUrl: null,
+          })
+          .where(eq(users.id, existingUser.id));
+      }
+
+      return { userId: existingUser.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      // Cleanup here (not only in middleware) to avoid races with the Mux webhook
+      // that may write the initial thumbnailKey after the upload middleware runs.
+      const [current] = await db
+        .select({ bannerKey: users.bannerKey })
+        .from(users)
+        .where(eq(users.id, metadata.userId));
+
+      const existingKey = current?.bannerKey;
+      await db
+        .update(users)
+        .set({
+          bannerUrl: file.url,
+          bannerKey: file.key,
+        })
+        .where(eq(users.id, metadata.userId));
+
+      if (existingKey && existingKey !== file.key) {
+        try {
+          const utapi = new UTApi();
+          await utapi.deleteFiles(existingKey);
+        } catch {
+          // Best-effort cleanup; don't fail the request after a successful upload.
+        }
+      }
+      return { uploadedBy: metadata.userId };
+    }),
+
   thumbnailUploader: f({
     image: {
       maxFileSize: "4MB",

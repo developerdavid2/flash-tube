@@ -49,7 +49,6 @@ export const studioRouter = createTRPCRouter({
       const { id: userId } = ctx.user;
 
       const data = await db
-
         .select({
           ...getTableColumns(videos),
           viewCount: db.$count(videoViews, eq(videoViews.videoId, videos.id)),

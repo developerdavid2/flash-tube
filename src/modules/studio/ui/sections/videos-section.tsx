@@ -156,13 +156,13 @@ const VideosSectionSuspense = () => {
                       {format(new Date(video.createdAt), "d MMM yyyy")}
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      {video.viewCount} Views
+                      {video.viewCount}
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      {video.commentCount} Comments
+                      {video.commentCount}
                     </TableCell>
                     <TableCell className="text-right text-sm pr-6">
-                      {video.likeCount} Likes
+                      {video.likeCount}
                     </TableCell>
                   </TableRow>
                 </Link>
